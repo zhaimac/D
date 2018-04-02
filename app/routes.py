@@ -47,10 +47,10 @@ def cart():
     if current_user.is_anonymous:
         return redirect(url_for('login'))
 
-    karts = Kart.query.filter_by(user_id = current_user.id).all()
-    print(len(karts))
-
-    return render_template("cart.html", products='dd', totalPrice=300, loggedIn=current_user)
+    product_in_cart = Kart.query.filter_by(user_id = current_user.id).join(
+        Product, Kart.product_id == Product.product_id).add_columns(
+        Product.name, Product.price, Product.image, Product.product_id).all()
+    return render_template("cart.html", products=product_in_cart, totalPrice=300, loggedIn=current_user)
 
 
 @app.route("/addToCart/<int:product_id>/<string:from_page>")
@@ -59,13 +59,10 @@ def addToCart(product_id, from_page):
         return redirect(url_for('login'))
 
     # TODO add try ...
-    kart = Kart.query.filter_by(product_id=product_id).first()
-
-
+    #kart = Kart.query.filter_by(product_id=product_id).first()
     kart = Kart(user_id = current_user.id, product_id= product_id)
     db.session.add(kart)
     db.session.commit()
-
     return redirect(url_for('cart'))
 
 @app.route("/removeFromCart/<int:product_id>/<string:from_page>")
@@ -73,7 +70,7 @@ def removeFromCart(product_id, from_page):
     if current_user.is_anonymous:
         return redirect(url_for('login'))
 
-    kart = Kart.query.filter_by(user_id = current_user.id, product_id= product_id).first()
+    kart = Kart.query.filter_by(user_id=current_user.id, product_id= product_id).first()
     db.session.delete(kart)
     db.session.commit()
     return redirect(url_for('cart'))
