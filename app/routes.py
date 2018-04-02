@@ -2,7 +2,8 @@ from app import app
 from flask import render_template, redirect, flash, url_for
 
 from flask_login import current_user
-from app.models import Post
+from app.models import Post, Product, Kart
+from app import db
 
 @app.route("/")
 @app.route('/index')
@@ -26,58 +27,53 @@ def plans():
 def nums():
     return render_template('numbersml.html')
 
+
+@app.route('/store')
+@app.route('/products')
+def products():
+    product_list = Product.query.all()
+    print(product_list)
+    return render_template("products.html", products=product_list)
+
+
+@app.route('/product/<int:product_id>')
+def product(product_id):
+    product_data = Product.query.filter_by(product_id=product_id).first()
+    return render_template("product.html", data=product_data, loggedIn = True, firstName = "Mo", noOfItems = 3)
+
+
 @app.route("/cart")
 def cart():
-    # if 'email' not in session:
-    #     return redirect(url_for('loginForm'))
-    # loggedIn, firstName, noOfItems = getLoginDetails()
-    # email = session['email']
-    # with sqlite3.connect('database.db') as conn:
-    #     cur = conn.cursor()
-    #     cur.execute("SELECT userId FROM users WHERE email = '" + email + "'")
-    #     userId = cur.fetchone()[0]
-    #     cur.execute("SELECT products.productId, products.name, products.price, products.image FROM products, kart WHERE products.productId = kart.productId AND kart.userId = " + str(userId))
-    #     products = cur.fetchall()
-    # totalPrice = 0
-    # for row in products:
-    #     totalPrice += row[2]
-    return render_template("cart.html", products = 'dd', totalPrice=300, loggedIn='mo', firstName='mo', noOfItems=3)
+    if current_user.is_anonymous:
+        return redirect(url_for('login'))
 
-@app.route("/addToCart")
-def addToCart():
-    # if 'email' not in session:
-    #     return redirect(url_for('loginForm'))
-    # productId = int(request.args.get('productId'))
-    # with sqlite3.connect('database.db') as conn:
-    #     cur = conn.cursor()
-    #     cur.execute("SELECT userId FROM users WHERE email = '" + session['email'] + "'")
-    #     userId = cur.fetchone()[0]
-    #     try:
-    #         cur.execute("INSERT INTO kart (userId, productId) VALUES (?, ?)", (userId, productId))
-    #         conn.commit()
-    #         msg = "Added successfully"
-    #     except:
-    #         conn.rollback()
-    #         msg = "Error occured"
-    # conn.close()
-    return redirect(url_for('root'))
+    karts = Kart.query.filter_by(user_id = current_user.id).all()
+    print(len(karts))
 
-@app.route("/removeFromCart")
-def removeFromCart():
-    # if 'email' not in session:
-    #     return redirect(url_for('loginForm'))
-    # email = session['email']
-    # productId = int(request.args.get('productId'))
-    # with sqlite3.connect('database.db') as conn:
-    #     cur = conn.cursor()
-    #     cur.execute("SELECT userId FROM users WHERE email = '" + email + "'")
-    #     userId = cur.fetchone()[0]
-    #     try:
-    #         cur.execute("DELETE FROM kart WHERE userId = " + str(userId) + " AND productId = " + str(productId))
-    #         conn.commit()
-    #         msg = "removed successfully"
-    #     except:
-    #         conn.rollback()
-    #         msg = "error occured"
-    # conn.close()
-    return redirect(url_for('root'))
+    return render_template("cart.html", products='dd', totalPrice=300, loggedIn=current_user)
+
+
+@app.route("/addToCart/<int:product_id>/<string:from_page>")
+def addToCart(product_id, from_page):
+    if current_user.is_anonymous:
+        return redirect(url_for('login'))
+
+    # TODO add try ...
+    kart = Kart.query.filter_by(product_id=product_id).first()
+
+
+    kart = Kart(user_id = current_user.id, product_id= product_id)
+    db.session.add(kart)
+    db.session.commit()
+
+    return redirect(url_for('cart'))
+
+@app.route("/removeFromCart/<int:product_id>/<string:from_page>")
+def removeFromCart(product_id, from_page):
+    if current_user.is_anonymous:
+        return redirect(url_for('login'))
+
+    kart = Kart.query.filter_by(user_id = current_user.id, product_id= product_id).first()
+    db.session.delete(kart)
+    db.session.commit()
+    return redirect(url_for('cart'))
